@@ -317,10 +317,10 @@ function parseDiv (div)
 
   if noFormat then
     preamble = nil
-    kind[1] = "single"
     judgements[1] = nil
     examples[1] = div
-  elseif data.tag == "OrderedList" then
+    kind[1] = "noformat"
+  elseif data.tag == "OrderedList" or data.tag == "BulletList" then
     for i=1,#data.content do
       judgements[i], examples[i], kind[i] = parseExample(data.content[i][1])
     end
@@ -455,6 +455,8 @@ function formatGlossLine (s)
   return split
 end
 
+-------------------------------
+
 function splitPara (p)
   -- remove quotes, they interfere with the splitting
  if p[1].tag == "Quoted" then
@@ -488,6 +490,8 @@ function splitPara (p)
   -- result is list of Plain chunks
   return result
 end
+
+-------------------------------
 
 function splitJudgement (line)
   local judgement = nil
@@ -561,7 +565,7 @@ function pandocNoFormat (parsedDiv)
   return example
 end
 
-function pandocMakeSingle (parsedDiv)
+function pandocMakeSingle (parsedDiv, label, forceJudge)
 
   -- basic content
   local exampleLine = parsedDiv.examples[1]
@@ -572,11 +576,18 @@ function pandocMakeSingle (parsedDiv)
   local judgeCol = 1
   -- add judgements
   local judgement = parsedDiv.judgements[1]
-  if judgement ~= nil then 
+  if judgement ~= nil or forceJudge then 
     rowContent = addCol ( rowContent )
     nCols = nCols + 1
     judgeCol = judgeCol + 1
     rowContent[1][1][1] = pandoc.Plain(judgement)
+  end
+  -- add labels
+  if label ~= nil then
+    rowContent = addCol(rowContent)
+    rowContent[1][1][1] = pandoc.Plain(string.char(96+label)..".")
+    nCols = nCols + 1
+    judgeCol = judgeCol + 1
   end
   -- add preamble
   local preamble = parsedDiv.preamble
@@ -610,6 +621,26 @@ function pandocMakeSingle (parsedDiv)
     end
 
   return example
+end
+
+function pandocInterlinearBlock (parsedInterlinear, judgement)
+
+  local header = {{ parsedInterlinear.header }}
+  local headerPresent = parsedInterlinear.header.content[1] ~= nil
+  local source = parsedInterlinear.source 
+  for i=1,#source do source[i] = { source[i] } end
+  local gloss =  parsedInterlinear.gloss 
+  for i=1,#gloss do gloss[i] = { gloss[i] } end
+  local trans = {{ parsedInterlinear.trans  }}
+  
+  local rowContent = { trans }
+    table.insert(rowContent, 1, gloss )
+    table.insert(rowContent, 1, source )
+  if headerPresent then
+    table.insert(rowContent, 1, header )
+  end
+
+  return rowContent
 end
 
 function pandocMakeInterlinear (parsedDiv, label, forceJudge)
@@ -731,9 +762,12 @@ function pandocMakeList (parsedDiv, from, to, forceJudge)
 
   -- basic content
   local rowContent = { {{ lines[from] }} }
-  for i=from+1,to do
-    table.insert(rowContent, {{ lines[i] }} )
+  if to > from then
+    for i=from+1,to do
+     table.insert(rowContent, {{ lines[i] }} )
+    end
   end
+
   -- set dimensions
   local nCols = 1
   local nRows = #rowContent
@@ -814,23 +848,29 @@ function pandocMakeMixedList (parsedDiv)
   local judgeSize = 0
   local forceJudge = false 
   for i=1,#judgements do
-    judgeSize = math.max(judgeSize, utf8.len(judgements[i]))
+    local j = pandoc.utils.stringify(judgements[i])
+    judgeSize = math.max(judgeSize, utf8.len(j))
   end
-  --if judgeSize > 0 then 
+  if judgeSize > 0 then 
     forceJudge = true
-  --end
+  end
 
   for i=1,#parsedDiv.kind do
     if parsedDiv.kind[i] == "interlinear" then
-      local label = i
-      result[resultCount] = pandocMakeInterlinear(parsedDiv, label, forceJudge)
+      result[resultCount] = pandocMakeInterlinear(parsedDiv, i, forceJudge)
       resultCount = resultCount + 1
     elseif parsedDiv.kind[i] == "single" then
-      if i==1 or parsedDiv.kind[i-1] ~= "single" then
+      -- check if previous is not single, then set startpoint
+      if i == 1 or parsedDiv.kind[i-1] ~= "single" then
         from = i
-      elseif parsedDiv.kind[i+1] ~= "single" then
-        local to = i
-        result[resultCount] = pandocMakeList(parsedDiv, from, to, forceJudge)
+      end
+      -- check if list ends, then make list
+      if i == #parsedDiv.kind or parsedDiv.kind[i+1] ~= "single" then
+        if from == i then
+          result[resultCount] = pandocMakeSingle(parsedDiv, i, forceJudge)
+        else
+          result[resultCount] = pandocMakeList(parsedDiv, from, i, forceJudge)
+        end
         resultCount = resultCount + 1
       end
     end
@@ -849,7 +889,7 @@ function pandocMakeMixedList (parsedDiv)
     -- For even better alignment, add column-width to judgement column
     -- note: this is probably not portable outside html
     if forceJudge then
-      result[i].bodies[1].body[2][2][3].attr = 
+      result[i].bodies[1].body[1][2][3].attr = 
         pandoc.Attr(nil, { "linguistic-judgement" }, { width = spaceForJudge.."px"} )
     end
   end
@@ -867,11 +907,13 @@ function addCol (lines)
   return lines
 end
 
-function sLength (j)
-  if j == nil then
+-------------------------------
+
+function sLength (str)
+  if str == nil then
     return 0
   else
-    return utf8.len(pandoc.utils.stringify(j)) 
+    return utf8.len(pandoc.utils.stringify(str)) 
   end
 end
 
