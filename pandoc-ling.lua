@@ -119,6 +119,30 @@ function addFormatting (meta)
   vertical-align: top; 
   padding-right: 2px;
 }
+.linguistic-example-gloss {
+  /*width: 100px;*/
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  align-items: flex-start;
+}
+.linguistic-example-gloss table {
+  width: auto;
+  margin-top: 0px;
+  margin-right: 1em;
+  margin-bottom: 5px;
+}
+.linguistic-example-gloss tbody {
+  border-top: none; 
+  border-bottom: none;
+
+}
+.linguistic-example-gloss tr:first-child {
+  font-style: italic;
+}
+.linguistic-example-gloss td {
+  padding: 0em;
+}
 </style>
       ]]
     tmp[#tmp+1] = pandoc.MetaBlocks(pandoc.RawBlock("html", css))
@@ -530,26 +554,27 @@ function pandocMakeExample (parsedDiv)
     example[1] = pandocNoFormat(parsedDiv)
   elseif #kind == 1 and kind[1] == "single" then
     example[1] = pandocMakeSingle(parsedDiv)
-  elseif #kind == 1 and kind[1] == "interlinear" then
-    example[1] = pandocMakeInterlinear(parsedDiv)
-  elseif #kind > 1 and onlySingle then
-    example[1] = pandocMakeList(parsedDiv)
   else
-    example = pandocMakeMixedList(parsedDiv)
+    example[1] = pandocMakeList(parsedDiv)
   end
-
-  -- -- Add example number to top left of first table
-  -- local numberParen = pandoc.Plain( "("..parsedDiv.number..")" )
-  -- example[1].bodies[1].body[1][2][1].contents[1] = numberParen
-  
-  -- -- set class and vertical align for noFormat
-  -- if noFormat then
-  --   example[1].bodies[1].body[1][2][1].attr = 
-  --     pandoc.Attr(nil, {"linguistic-example-number"}, {style = "vertical-align: middle;"})
+  -- elseif #kind == 1 and kind[1] == "interlinear" then
+  --   example[1] = pandocMakeInterlinear(parsedDiv)
+  -- elseif #kind > 1 and onlySingle then
   -- else
-  --   example[1].bodies[1].body[1][2][1].attr = 
-  --     pandoc.Attr(nil, {"linguistic-example-number"}, {style = "vertical-align: top;"})
-  -- end
+  --   example = pandocMakeMixedList(parsedDiv)
+
+  -- Add example number to top left of first table
+  local numberParen = pandoc.Plain( "("..parsedDiv.number..")" )
+  example[1].bodies[1].body[1][2][1].contents[1] = numberParen
+  
+  -- set class and vertical align for noFormat
+  if noFormat then
+    example[1].bodies[1].body[1][2][1].attr = 
+      pandoc.Attr(nil, {"linguistic-example-number"}, {style = "vertical-align: middle;"})
+  else
+    example[1].bodies[1].body[1][2][1].attr = 
+      pandoc.Attr(nil, {"linguistic-example-number"}, {style = "vertical-align: top;"})
+  end
 
   return example
 end
@@ -616,18 +641,13 @@ function pandocMakeSingle (parsedDiv)
   return example
 end
 
-function pandocMakeInterlinear (parsedDiv, label, forceJudge)
+function pandocMakeInterlinear (interlinear, forceJudge)
     -- basic content
-  local selection = 1
-  if label ~= nil then
-    selection = label
-  end
-  local interlinear = parsedDiv.examples[selection]
   local source = interlinear.source
   local gloss  = interlinear.gloss 
 
   local widths = {0, 0}
-  local aligns = {"AlignLeft", "AlignLeft"}
+  local aligns = {"AlignLeft"}
 
   sourceGlossTables = {}
   for i=1,#source do
@@ -641,23 +661,31 @@ function pandocMakeInterlinear (parsedDiv, label, forceJudge)
     currentTable = pandoc.utils.from_simple_table(currentTable)
     table.insert(sourceGlossTables, currentTable)
   end
+  local glossDiv = pandoc.Div(sourceGlossTables, {class="linguistic-example-gloss"})
 
-
-  return pandoc.Div(sourceGlossTables)
+  return pandoc.Div({
+    glossDiv,
+    interlinear.trans
+  })
 end
 
 function pandocMakeList (parsedDiv, from, to, forceJudge)
   -- for a group of subsequent single examples
-  local lines = parsedDiv.examples
+  local lines      = parsedDiv.examples
   local judgements = parsedDiv.judgements
+  local kind       = parsedDiv.kind
 
   if from == nil then from = 1 end
   if to == nil then to = #lines end
 
   -- basic content
-  local rowContent = { {{ lines[from] }} }
-  for i=from+1,to do
-    table.insert(rowContent, {{ lines[i] }} )
+  local rowContent = { }
+  for i=from,to do
+    if kind[i] ~= "interlinear" then
+      table.insert(rowContent, {{ lines[i] }} )
+    else
+      table.insert(rowContent, {{ pandocMakeInterlinear(lines[i], nil) }} )
+    end
   end
   -- set dimensions
   local nCols = 1
@@ -679,12 +707,17 @@ function pandocMakeList (parsedDiv, from, to, forceJudge)
   end
   -- add labels
   local labels = {}
-  for i=from,to do 
-    local label = pandoc.Str(string.char(96+i)..".")
-    table.insert(rowContent[i], 1, { pandoc.Plain(label) })
-  end
+  -- do not add label if there is just one interlinear gloss
+  local needsLabels = not(to - from == 0 and kind[from] == "interlinear")
+  if needsLabels  then
+    for i=from,to do 
+      local label = pandoc.Str(string.char(96+i)..".")
+      table.insert(rowContent[i], 1, { pandoc.Plain(label) })
+    end
     nCols = nCols + 1
     judgeCol = judgeCol + 1
+  end
+
   -- add preamble
   local preamble = parsedDiv.preamble
   if preamble ~= nil then
@@ -704,8 +737,10 @@ function pandocMakeList (parsedDiv, from, to, forceJudge)
   for i=start,nRows do
     example.bodies[1].body[i][2][nCols].attr = 
       pandoc.Attr(nil, {"linguistic-example-content"})
-    example.bodies[1].body[i][2][2].attr = 
-      pandoc.Attr(nil, {"linguistic-example-label"})
+    if needsLabels then
+      example.bodies[1].body[i][2][2].attr = 
+        pandoc.Attr(nil, {"linguistic-example-label"})
+    end
   end
   -- set class of judgment
   if judgeCol > 1 then

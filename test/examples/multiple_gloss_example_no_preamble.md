@@ -1,10 +1,12 @@
 ---
-pagetitle:  'Cumulativity from Homogeneity'
+pagetitle:  'Simple gloss'
 author:     Keny Chatain
 lang:       en
 ---
 
 :::ex
+aezdaez
+
 | Something even
 | likay yu'nis al-bait ya waladi fa al-buyuut satamuut idhaa ghaaba sukkanuhaa
 | so it-keeps-company the-house o my-boy as the-houses will-die if leave its-residents
