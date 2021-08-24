@@ -538,18 +538,18 @@ function pandocMakeExample (parsedDiv)
     example = pandocMakeMixedList(parsedDiv)
   end
 
-  -- Add example number to top left of first table
-  local numberParen = pandoc.Plain( "("..parsedDiv.number..")" )
-  example[1].bodies[1].body[1][2][1].contents[1] = numberParen
+  -- -- Add example number to top left of first table
+  -- local numberParen = pandoc.Plain( "("..parsedDiv.number..")" )
+  -- example[1].bodies[1].body[1][2][1].contents[1] = numberParen
   
-  -- set class and vertical align for noFormat
-  if noFormat then
-    example[1].bodies[1].body[1][2][1].attr = 
-      pandoc.Attr(nil, {"linguistic-example-number"}, {style = "vertical-align: middle;"})
-  else
-    example[1].bodies[1].body[1][2][1].attr = 
-      pandoc.Attr(nil, {"linguistic-example-number"}, {style = "vertical-align: top;"})
-  end
+  -- -- set class and vertical align for noFormat
+  -- if noFormat then
+  --   example[1].bodies[1].body[1][2][1].attr = 
+  --     pandoc.Attr(nil, {"linguistic-example-number"}, {style = "vertical-align: middle;"})
+  -- else
+  --   example[1].bodies[1].body[1][2][1].attr = 
+  --     pandoc.Attr(nil, {"linguistic-example-number"}, {style = "vertical-align: top;"})
+  -- end
 
   return example
 end
@@ -617,112 +617,33 @@ function pandocMakeSingle (parsedDiv)
 end
 
 function pandocMakeInterlinear (parsedDiv, label, forceJudge)
-
-  -- basic content
+    -- basic content
   local selection = 1
   if label ~= nil then
     selection = label
   end
   local interlinear = parsedDiv.examples[selection]
-  
-  local header = {{ interlinear.header }}
-  local headerPresent = interlinear.header.content[1] ~= nil
-  local source = interlinear.source 
-  for i=1,#source do source[i] = { source[i] } end
-  local gloss =  interlinear.gloss 
-  for i=1,#gloss do gloss[i] = { gloss[i] } end
-  local trans = {{ interlinear.trans  }}
-  
-  local rowContent = { trans }
-    table.insert(rowContent, 1, gloss )
-    table.insert(rowContent, 1, source )
-  if headerPresent then
-    table.insert(rowContent, 1, header )
-  end
-  -- set dimensions
-  local nCols = #source
-  local nRows = #rowContent
-  local judgeCol = 0
-  -- add judgements
-  local judgement = parsedDiv.judgements[selection]
-    if judgement ~= nil or forceJudge then 
-      rowContent = addCol ( rowContent )
-      nCols =  nCols + 1
-      judgeCol = judgeCol + 2
-      if judgement == nil then judgement = "" end
-      if headerPresent then
-        rowContent[2][1][1] = pandoc.Plain(judgement)
-      else
-        rowContent[1][1][1] = pandoc.Plain(judgement)
-      end
-    end
-  -- add labels
-  if label ~= nil then
-    rowContent = addCol(rowContent)
-    rowContent[1][1][1] = pandoc.Plain(string.char(96+label)..".")
-    nCols = nCols + 1
-    judgeCol = judgeCol + 1
-  end
-  -- add preamble
-  local preamble = parsedDiv.preamble
-  if label ~= nil then preamble = nil end
-  if preamble ~= nil then
-    table.insert(rowContent, 1, {{ preamble }} )
-    nRows = nRows + 1
-  end
-  -- add number column
-  rowContent = addCol(rowContent)
-  nCols = nCols + 1
-  
-  -- make into table
-  local example = turnIntoTable(rowContent, nCols, judgeCol)
+  local source = interlinear.source
+  local gloss  = interlinear.gloss 
 
-  local ps = 0 --preambleshift
-  local ls = 0 --labelshift
-  local hs = 0 --headershift
-  local js = 0 --judgementshift
-  if judgeCol > 1 then js = 1 end
+  local widths = {0, 0}
+  local aligns = {"AlignLeft", "AlignLeft"}
 
-  -- set class of preamble and extend cell
-  if preamble ~= nil then
-    ps = 1
-    example.bodies[1].body[1][2][2].attr = 
-      pandoc.Attr(nil, {"linguistic-example-preamble"})
-    example.bodies[1].body[1][2][2].col_span = nCols - 1
-  end
-  -- set class of label
-  if label ~= nil then
-    ls = 1
-    example.bodies[1].body[1][2][2+ps].attr = 
-      pandoc.Attr(nil, {"linguistic-example-label"})
-  end
-  -- set class of header and extend cell
-  if headerPresent then
-    hs = 1
-    example.bodies[1].body[1+ps][2][2+ls+js].attr = 
-      pandoc.Attr(nil, {"linguistic-example-header", "linguistic-example-content"})
-    example.bodies[1].body[1+ps][2][2+ls+js].col_span = nCols-1-ls-js
-  end
-  -- set class of translation and extend cell
-  example.bodies[1].body[nRows][2][2+ls+js].attr = 
-    pandoc.Attr(nil, {"linguistic-example-translation", "linguistic-example-content"})
-  example.bodies[1].body[nRows][2][2+ls+js].col_span = nCols-1-ls-js
-  -- set class of judgment
-  if judgeCol > 1 then
-    example.bodies[1].body[1+hs+ps][2][2+ls].attr = 
-      pandoc.Attr(nil, {"linguistic-example-judgement"})
-  end
-  -- set class of source and gloss
-  local ssCol = 3 + ls -- sourcestart columns
-  local ssRow = 1 + hs + ps -- sourcestart row
-  for i=ssCol,nCols do
-    example.bodies[1].body[ssRow][2][i].attr = 
-      pandoc.Attr(nil, {"linguistic-example-source", "linguistic-example-content"})
-    example.bodies[1].body[ssRow+1][2][i].attr = 
-      pandoc.Attr(nil, {"linguistic-example-gloss", "linguistic-example-content"})
+  sourceGlossTables = {}
+  for i=1,#source do
+    local currentTable = pandoc.SimpleTable(
+      {},
+      aligns,
+      widths,
+      {},
+      {{{source[i]}}, {{gloss[i]}}}
+    )
+    currentTable = pandoc.utils.from_simple_table(currentTable)
+    table.insert(sourceGlossTables, currentTable)
   end
 
-  return example
+
+  return pandoc.Div(sourceGlossTables)
 end
 
 function pandocMakeList (parsedDiv, from, to, forceJudge)
