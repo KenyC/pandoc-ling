@@ -28,8 +28,8 @@ local chapter = 0 -- numbering of chapters
 local counterInChapter = 0 -- counter reset for each chapter
 local indexEx = {} -- global lookup for example IDs
 local orderInText = 0 -- order of references for resolving "Next"-style references
-local indexRef = {} -- key/value: order in text = refID/exID
-local rev_indexRef = {} -- "reversed" indexRef, i.e. key/value: refID/exID = order-number in text
+local indexRef = {}     -- key/value: order in text = refID/exID
+local nextRefIndex = {} -- key/value: next ref id = order position of ref
 
 ------------------------------------
 -- User Settings with default values
@@ -1394,22 +1394,30 @@ end
 
 function uniqueNextrefs (cite)
 
-  -- to resolve "Next"-style references give them all an unique ID
-  -- make indices to check in which order they occur
-  local nameN = string.match(cite.content[1].text, "([n]+)ext")
-  local nameL = string.match(cite.content[1].text, "([l]+)ast")
+
+  -- to resolve "Next"-style references 
+  -- we construct a list that lists example refs in order
   local target = string.match(cite.content[1].text, "@Target")
+  if target ~= nil then
+      orderInText = orderInText + 1
+      indexRef[orderInText] = cite.citations[1].id
+  else
+    -- next/last refs are given a number ID.
+    -- this ID maps to the position of the example that it refers to in "nextRefIndex"
+    local nameN = string.match(cite.citations[1].id, "([n]+)ext")
+    local nameL = string.match(cite.citations[1].id, "([l]+)ast")
+    if nameN ~= nil or nameL ~= nil then
+      local id = tostring(#nextRefIndex + 1)
+      cite.citations[1].id = id
 
-  -- use random ID to make unique
-  if nameN ~= nil or nameL ~= nil then
-    cite.citations[1].id = tostring(math.random(99999))
-  end
-
-  -- make indices
-  if nameN ~= nil or nameL ~= nil or target ~= nil then
-    orderInText = orderInText + 1
-    indexRef[orderInText] = cite.citations[1].id
-    rev_indexRef[cite.citations[1].id] = orderInText
+      local add = 0
+      if nameN ~= nil then
+        add = string.len(nameN)
+      else
+        add = - string.len(nameL) + 1
+      end
+      table.insert(nextRefIndex, orderInText + add) 
+    end
   end
 
   return(cite)
@@ -1417,43 +1425,31 @@ end
 
 ------------------------------------------
 
+-- debug purposes: REMOVE ME!
+function dump(o)
+   if type(o) == 'table' then
+      local s = '{ '
+      for k,v in pairs(o) do
+         if type(k) ~= 'number' then k = '"'..k..'"' end
+         s = s .. '['..k..'] = ' .. dump(v) .. ','
+      end
+      return s .. '} '
+   else
+      return tostring(o)
+   end
+end
+
+
 function resolveNextrefs (cite)
 
   -- assume Next-style refs have numeric id (from uniqueNextrefs)
   -- assume Example-IDs are not numeric (user should not use them!)
+
   local id = cite.citations[1].id
-  local order = rev_indexRef[id]
-
-  local distN = 0
-  local sequenceN = string.match(cite.content[1].text, "([n]+)ext")
-  if sequenceN ~= nil then distN = string.len(sequenceN) end
-  
-  if distN > 0 then
-    for i=order,#indexRef do
-      if tonumber(indexRef[i]) == nil then
-        distN = distN - 1
-        if distN == 0 then
-          cite.citations[1].id = indexRef[i]
-        end
-      end
-    end
+  if tonumber(id) ~= nil then
+    cite.citations[1].id = indexRef[nextRefIndex[tonumber(id)]]
   end
-
-  local distL = 0
-  local sequenceL = string.match(cite.content[1].text, "([l]+)ast")
-  if sequenceL ~= nil then distL= string.len(sequenceL) end
   
-  if distL > 0 then
-    for i=order,1,-1 do
-      if tonumber(indexRef[i]) == nil then
-        distL = distL - 1
-        if distL == 0 then
-          cite.citations[1].id = indexRef[i]
-        end
-      end
-    end
-  end
-
   return(cite)
 end
 
