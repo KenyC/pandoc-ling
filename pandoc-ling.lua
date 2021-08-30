@@ -664,6 +664,7 @@ function pandocMakeInterlinear (interlinear, forceJudge)
   local glossDiv = pandoc.Div(sourceGlossTables, {class="linguistic-example-gloss"})
 
   return pandoc.Div({
+    interlinear.header,
     glossDiv,
     interlinear.trans
   })
