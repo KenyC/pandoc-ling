@@ -557,11 +557,6 @@ function pandocMakeExample (parsedDiv)
   else
     example[1] = pandocMakeList(parsedDiv)
   end
-  -- elseif #kind == 1 and kind[1] == "interlinear" then
-  --   example[1] = pandocMakeInterlinear(parsedDiv)
-  -- elseif #kind > 1 and onlySingle then
-  -- else
-  --   example = pandocMakeMixedList(parsedDiv)
 
   -- Add example number to top left of first table
   local numberParen = pandoc.Plain( "("..parsedDiv.number..")" )
@@ -760,62 +755,6 @@ function pandocMakeList (parsedDiv, from, to, forceJudge)
   return example
 end
 
------------------------------------------
-
-function pandocMakeMixedList (parsedDiv)
-
-  -- mix of interlinear and (groups of) single examples
-  -- returns a list of tables
-  local result = {}
-  local resultCount = 1
-  local from = 1
-
-  -- harmonize judgementcolumn across tables, possibly forced
-  local judgements = parsedDiv.judgements
-  local judgeSize = 0
-  local forceJudge = false 
-  for i=1,#judgements do
-    judgeSize = math.max(judgeSize, utf8.len(judgements[i]))
-  end
-  --if judgeSize > 0 then 
-    forceJudge = true
-  --end
-
-  for i=1,#parsedDiv.kind do
-    if parsedDiv.kind[i] == "interlinear" then
-      local label = i
-      result[resultCount] = pandocMakeInterlinear(parsedDiv, label, forceJudge)
-      resultCount = resultCount + 1
-    elseif parsedDiv.kind[i] == "single" then
-      if i==1 or parsedDiv.kind[i-1] ~= "single" then
-        from = i
-      elseif parsedDiv.kind[i+1] ~= "single" then
-        local to = i
-        result[resultCount] = pandocMakeList(parsedDiv, from, to, forceJudge)
-        resultCount = resultCount + 1
-      end
-    end
-  end
-
-  -- rough approximations to align multiple tables
-  local spaceForNumber = string.rep(" ", 2*(string.len(parsedDiv.number)+1))
-  local spaceForJudge = tostring(15 + 5*judgeSize)
-  
-  for i=1,#result do
-    -- For better alignment with example number
-    -- add invisibles in first column 
-    -- not a very elegant solution, but portable across formats
-    result[i].bodies[1].body[1][2][1].contents[1] = 
-      pandoc.Plain(spaceForNumber)
-    -- For even better alignment, add column-width to judgement column
-    -- note: this is probably not portable outside html
-    if forceJudge then
-      result[i].bodies[1].body[2][2][3].attr = 
-        pandoc.Attr(nil, { "linguistic-judgement" }, { width = spaceForJudge.."px"} )
-    end
-  end
-  return result
-end
 
 --------------------------------------
 -- helper functions to format examples
