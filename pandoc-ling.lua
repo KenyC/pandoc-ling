@@ -207,6 +207,7 @@ function addFormatting (meta)
             interpartskip = -0.5ex, \
             belowpreambleskip = -2ex \
           }")
+      add("\\gathertags") -- for forward references
       if addChapterNumber then
         if documentclass == "book" then
           add("\\lingset{exnotype=chapter.arabic}")
