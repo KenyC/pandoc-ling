@@ -1,7 +1,8 @@
 ---
-pagetitle:  'Simple gloss'
-author:     Keny Chatain
-lang:       en
+pagetitle:    'Simple gloss'
+author:       Keny Chatain
+lang:         en
+latexPackage: expex
 ---
 
 :::ex
