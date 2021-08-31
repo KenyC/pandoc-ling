@@ -638,13 +638,14 @@ function pandocMakeSingle (parsedDiv)
 end
 
 function pandocMakeInterlinear (interlinear, forceJudge)
-    -- basic content
+  -- basic content
   local source = interlinear.source
   local gloss  = interlinear.gloss 
 
   local widths = {0, 0}
   local aligns = {"AlignLeft"}
 
+  -- interlinear gloss is rendered as a list of flexbox tables (one table for source/gloss word) inside a div
   sourceGlossTables = {}
   for i=1,#source do
     local currentTable = pandoc.SimpleTable(
@@ -657,8 +658,10 @@ function pandocMakeInterlinear (interlinear, forceJudge)
     currentTable = pandoc.utils.from_simple_table(currentTable)
     table.insert(sourceGlossTables, currentTable)
   end
+  -- We put source and gloss in a div which serves as a flexbox container 
   local glossDiv = pandoc.Div(sourceGlossTables, {class="linguistic-example-gloss"})
 
+  -- Header and translation are simply concatenated with glossDiv
   return pandoc.Div({
     interlinear.header,
     glossDiv,
