@@ -1136,14 +1136,14 @@ function texMakeLinguex (parsedDiv)
       source = texCombine(source)
       gloss  = texCombine(gloss)
 
-      if pandoc.utils.stringify(header) == "" then
-        header = pandoc.List()
-      end
+      
 
       if #kind > 1 and i == 1 then 
         texFront("\n  \\a. ", header)
       elseif #kind > 1 and i > 1 then
         texFront("\n  \\b. ", header)
+      elseif pandoc.utils.stringify(header) == "" then
+        header = pandoc.List()
       else
         texFront("\n  ", header)
       end

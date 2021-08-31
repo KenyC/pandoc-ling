@@ -41,5 +41,8 @@ expex:   $(EXAMPLE_MD_FILES:src/%.md=build/latex/expex/%.tex)
 linguex: $(EXAMPLE_MD_FILES:src/%.md=build/latex/linguex/%.tex)
 gb4e:    $(EXAMPLE_MD_FILES:src/%.md=build/latex/gb4e/%.tex)
 
+latex: $(EXAMPLE_TEX_FILES) $(EXAMPLE_PDF_FILES)
+html:  $(EXAMPLE_HTML_FILES)
+
 clean:
 	rm -r build
