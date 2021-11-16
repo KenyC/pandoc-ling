@@ -274,9 +274,11 @@ function processDiv (div)
 
     -- add temporary Cite to resolve "Next"-type references
     -- will be removed after cross-references are in place
-    local tmpCite = pandoc.Plain(pandoc.Cite(
-            {pandoc.Str("@Target")},
-            {pandoc.Citation(parsedDiv.exID,"NormalCitation")}))
+    local tmpCite = pandoc.Plain(
+      pandoc.Cite(
+            {pandoc.Citation(parsedDiv.exID, "NormalCitation")},
+            {pandoc.Str("@Target")}
+    ))
 
     -- reformat!
     local example
@@ -1358,7 +1360,7 @@ end
 function removeTmpTargetrefs (cite)
   -- remove temporary cites for resolving Next-style reference
   if cite.content[1].text == "@Target" then
-    return pandoc.Plain({})
+    return {}
   end 
 end
 
