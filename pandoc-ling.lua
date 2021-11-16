@@ -108,6 +108,7 @@ function addFormatting (meta)
 }
 .linguistic-example td {
   padding-left: 0;
+  vertical-align: top;  
 }
 .linguistic-example-content { 
   vertical-align: top;  

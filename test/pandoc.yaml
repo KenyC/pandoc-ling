@@ -151,7 +151,6 @@ track-changes: accept
 html-q-tags: false
 
 # none, all, or best
-ipynb-output: best
 
 # A list of two-element lists
 # request-headers:
