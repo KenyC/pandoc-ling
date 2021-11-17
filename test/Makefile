@@ -1,6 +1,51 @@
+include config.mk
 YAML_FILE=pandoc.yaml
 
-all: examples
+EXAMPLE_MD_FILES=$(wildcard src/*.md)
+EXAMPLE_HTML_FILES=$(EXAMPLE_MD_FILES:src/%.md=build/html/%.html)
+SCREENSHOT_FILES=$(EXAMPLE_HTML_FILES:build/html/%.html=build/screenshots/current/%.png)
+SCREENSHOT_DIFF_FILES=$(EXAMPLE_HTML_FILES:build/html/%.html=build/screenshots/diff/%.png)
+OLD_SCREENSHOT_FILES=$(EXAMPLE_HTML_FILES:build/html/%.html=build/screenshots/old/%.png)
+LING_PACKAGES=expex gb4e linguex langsci
+EXAMPLE_TEX_FILES=$(foreach package,$(LING_PACKAGES),$(EXAMPLE_MD_FILES:src/%.md=build/latex/$(package)/%.tex))
+EXAMPLE_PDF_FILES=$(foreach package,$(LING_PACKAGES),$(EXAMPLE_MD_FILES:src/%.md=build/pdf/$(package)/%.pdf))
+
+ifeq ($(OUTPUT_SCREENSHOT),yes)
+all: examples screenshots 
+else
+all: examples 
+endif
+
+
+examples:    $(EXAMPLE_HTML_FILES)  $(EXAMPLE_TEX_FILES) $(EXAMPLE_PDF_FILES)
+screenshots: $(SCREENSHOT_FILES)
+saveshots:   $(OLD_SCREENSHOT_FILES)
+diff:        $(SCREENSHOT_DIFF_FILES)
+
+
+langsci: $(EXAMPLE_MD_FILES:src/%.md=build/latex/langsci/%.tex)
+expex:   $(EXAMPLE_MD_FILES:src/%.md=build/latex/expex/%.tex)
+linguex: $(EXAMPLE_MD_FILES:src/%.md=build/latex/linguex/%.tex)
+gb4e:    $(EXAMPLE_MD_FILES:src/%.md=build/latex/gb4e/%.tex)
+
+clean:
+	rm -r build
+
+
+
+build/screenshots/current/%.png: build/html/%.html
+	@mkdir -p $(dir $@)
+	$(MK_SCREENSHOT) $< $@
+	rm -f geckodriver.log
+
+build/screenshots/old/%.png: 
+	@mkdir -p $(dir $@)
+	cp -f $(@:build/screenshots/old/%.png=build/screenshots/current/%.png) $@
+
+build/screenshots/diff/%.png: build/screenshots/current/%.png 
+	@mkdir -p $(dir $@)
+	if $(DIFFTOOL) $< $(@:build/screenshots/diff/%.png=build/screenshots/old/%.png) $@ ; then cp $< $@; fi
+
 
 build/html/%.html: src/%.md ../pandoc-ling.lua
 	@mkdir -p $(dir $@)
@@ -28,18 +73,3 @@ build/latex/langsci/%.tex: src/%.md ../pandoc-ling.lua
 	@mkdir -p $(dir $@)
 	pandoc -d $(YAML_FILE) --metadata=latexPackage=langsci-gb4e --from=markdown --to=latex $< --output=$@
 
-EXAMPLE_MD_FILES=$(wildcard src/*.md)
-EXAMPLE_HTML_FILES=$(EXAMPLE_MD_FILES:src/%.md=build/html/%.html)
-LING_PACKAGES=expex gb4e linguex langsci
-EXAMPLE_TEX_FILES=$(foreach package,$(LING_PACKAGES),$(EXAMPLE_MD_FILES:src/%.md=build/latex/$(package)/%.tex))
-EXAMPLE_PDF_FILES=$(foreach package,$(LING_PACKAGES),$(EXAMPLE_MD_FILES:src/%.md=build/pdf/$(package)/%.pdf))
-
-examples: $(EXAMPLE_HTML_FILES)  $(EXAMPLE_TEX_FILES) $(EXAMPLE_PDF_FILES)
-
-langsci: $(EXAMPLE_MD_FILES:src/%.md=build/latex/langsci/%.tex)
-expex:   $(EXAMPLE_MD_FILES:src/%.md=build/latex/expex/%.tex)
-linguex: $(EXAMPLE_MD_FILES:src/%.md=build/latex/linguex/%.tex)
-gb4e:    $(EXAMPLE_MD_FILES:src/%.md=build/latex/gb4e/%.tex)
-
-clean:
-	rm -r build
