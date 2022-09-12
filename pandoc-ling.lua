@@ -277,8 +277,8 @@ function processDiv (div)
     -- will be removed after cross-references are in place
     local tmpCite = pandoc.Plain(
       pandoc.Cite(
-            {pandoc.Citation(parsedDiv.exID, "NormalCitation")},
-            {pandoc.Str("@Target")}
+            {pandoc.Str("@Target")},
+            {pandoc.Citation(parsedDiv.exID, "NormalCitation")}
     ))
 
     -- reformat!
@@ -564,14 +564,14 @@ function pandocMakeExample (parsedDiv)
 
   -- Add example number to top left of first table
   local numberParen = pandoc.Plain( "("..parsedDiv.number..")" )
-  example[1].bodies[1].body[1][2][1].contents[1] = numberParen
+  example[1].bodies[1].body[1].cells[1].contents[1] = numberParen
   
   -- set class and vertical align for noFormat
   if noFormat then
-    example[1].bodies[1].body[1][2][1].attr = 
+    example[1].bodies[1].body[1].cells[1].attr = 
       pandoc.Attr(nil, {"linguistic-example-number"}, {style = "vertical-align: middle;"})
   else
-    example[1].bodies[1].body[1][2][1].attr = 
+    example[1].bodies[1].body[1].cells[1].attr = 
       pandoc.Attr(nil, {"linguistic-example-number"}, {style = "vertical-align: top;"})
   end
 
@@ -583,7 +583,7 @@ function pandocNoFormat (parsedDiv)
   -- make a simple 1x2 table with the whole div in the second cell
   local example = turnIntoTable({{ {}, {parsedDiv.examples[1]} } } , 2, 0)
   -- set class of content
-  example.bodies[1].body[1][2][2].attr = 
+  example.bodies[1].body[1].cells[2].attr = 
     pandoc.Attr(nil, {"linguistic-example-content"})
 
   return example
@@ -624,11 +624,11 @@ function pandocMakeSingle (parsedDiv)
   local example = turnIntoTable(rowContent, nCols, judgeCol)
 
   -- set class of content
-    example.bodies[1].body[nRows][2][nCols].attr = 
+    example.bodies[1].body[nRows].cells[nCols].attr = 
       pandoc.Attr(nil, {"linguistic-example-content"})
   -- set class of preamble
   if preamble ~= nil then
-    example.bodies[1].body[1][2][nCols].attr = 
+    example.bodies[1].body[1].cells[nCols].attr = 
       pandoc.Attr(nil, {"linguistic-example-preamble"})
   end
   -- set class of judgment
@@ -738,25 +738,25 @@ function pandocMakeList (parsedDiv, from, to, forceJudge)
   local start = 1
   if preamble ~= nil then start = 2 end
   for i=start,nRows do
-    example.bodies[1].body[i][2][nCols].attr = 
+    example.bodies[1].body[i].cells[nCols].attr = 
       pandoc.Attr(nil, {"linguistic-example-content"})
     if needsLabels then
-      example.bodies[1].body[i][2][2].attr = 
+      example.bodies[1].body[i].cells[2].attr = 
         pandoc.Attr(nil, {"linguistic-example-label"})
     end
   end
   -- set class of judgment
   if judgeCol > 1 then
     for i=start,#example.bodies[1].body do
-      example.bodies[1].body[i][2][judgeCol].attr = 
+      example.bodies[1].body[i].cells[judgeCol].attr = 
         pandoc.Attr(nil, {"linguistic-example-judgement"})
     end
   end
   -- set class of preamble and extend cell
   if preamble ~= nil then
-    example.bodies[1].body[1][2][2].attr = 
+    example.bodies[1].body[1].cells[2].attr = 
       pandoc.Attr(nil, {"linguistic-example-preamble"})
-    example.bodies[1].body[1][2][2].col_span = nCols - 1
+    example.bodies[1].body[1].cells[2].col_span = nCols - 1
   end
 
   return example
